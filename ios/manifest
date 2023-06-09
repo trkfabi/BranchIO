@@ -1,0 +1,19 @@
+#
+# this is your module manifest and used by Titanium
+# during compilation, packaging, distribution, etc.
+#
+version: 1.0.0
+apiversion: 2
+architectures: arm64 x86_64
+mac: false
+description: BranchIO
+author: Fabian Martinez
+license: Specify your license
+copyright: Copyright (c) 2023 by Your Company
+
+# these should not be edited
+name: BranchIO
+moduleid: com.inzori.branchio
+guid: 43bfaf6b-04b6-4e71-a1db-3d5c7ed5aaf6
+platform: iphone
+minsdk: 11.0.0.GA
