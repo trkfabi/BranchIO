@@ -55,7 +55,9 @@ public class BranchIOModule extends KrollModule
 		Log.w(LCAT, "inside onAppCreate");
 		// put module init code that needs to run when the application is created
 		// Branch logging for debugging
-		Branch.enableLogging();
+		// Branch.enableLogging();
+		// Delay Session Initialization
+		Branch.expectDelayedSessionInitialization(true);
 
 		// Branch object initialization
 		Branch.getAutoInstance(TiApplication.getInstance());
@@ -65,34 +67,74 @@ public class BranchIOModule extends KrollModule
 	@Kroll.method
 	public void initSession()
 	{
-		Log.w(LCAT, "start init");
+		Log.w(LCAT, "initSession()");
 		final Activity activity = this.getActivity();
 
 		Branch.sessionBuilder(activity).withCallback(new Branch.BranchUniversalReferralInitListener() {
+			KrollDict response = new KrollDict();
+
 			@Override
 			public void onInitFinished(BranchUniversalObject branchUniversalObject, LinkProperties linkProperties, BranchError error) {
 				if (error != null) {
 					Log.e("BranchSDK_Tester", "branch init failed. Caused by -" + error.getMessage());
+					String errorMessage = error.getMessage();
+					response.put("result", "error");
+					response.put("message", errorMessage);
 				} else {
 					Log.w("BranchSDK_Tester", "branch init complete!");
+					response.put("result", "success");
 					if (branchUniversalObject != null) {
 						Log.w("BranchSDK_Tester", "title " + branchUniversalObject.getTitle());
 						Log.w("BranchSDK_Tester", "CanonicalIdentifier " + branchUniversalObject.getCanonicalIdentifier());
 						Log.w("BranchSDK_Tester", "metadata " + branchUniversalObject.getContentMetadata().convertToJson());
+						response.put("data", branchUniversalObject.getContentMetadata().convertToJson());
 					}
 
 					if (linkProperties != null) {
 						Log.w("BranchSDK_Tester", "Channel " + linkProperties.getChannel());
 						Log.w("BranchSDK_Tester", "control params " + linkProperties.getControlParams());
+						response.put("linkProperties", linkProperties.toString());
 					}
 				}
+				fireEvent("bio:initSession", response);
 			}
 		}).withData(activity.getIntent().getData()).init();
 	}
 	@Kroll.method
-	public void updateIntent(IntentProxy obj)
+	public void updateIntent(IntentProxy _intent)
 	{
 		Log.w(LCAT, "update intent");
+
+		final Activity activity = this.getActivity();
+		_intent.getIntent().putExtra("branch_force_new_session", true);
+		activity.setIntent(_intent.getIntent());
+		Branch.sessionBuilder(activity).withCallback(new Branch.BranchUniversalReferralInitListener() {
+			KrollDict response = new KrollDict();
+			public void onInitFinished(BranchUniversalObject branchUniversalObject, LinkProperties linkProperties, BranchError error) {
+				if (error != null) {
+					Log.e("BranchSDK_Tester", "branch init failed. Caused by -" + error.getMessage());
+					String errorMessage = error.getMessage();
+					response.put("result", "error");
+					response.put("message", errorMessage);
+				} else {
+					Log.w("BranchSDK_Tester", "branch init complete!");
+					response.put("result", "success");
+					if (branchUniversalObject != null) {
+						Log.w("BranchSDK_Tester", "title " + branchUniversalObject.getTitle());
+						Log.w("BranchSDK_Tester", "CanonicalIdentifier " + branchUniversalObject.getCanonicalIdentifier());
+						Log.w("BranchSDK_Tester", "metadata " + branchUniversalObject.getContentMetadata().convertToJson());
+						response.put("data", branchUniversalObject.getContentMetadata().convertToJson());
+					}
+
+					if (linkProperties != null) {
+						Log.w("BranchSDK_Tester", "Channel " + linkProperties.getChannel());
+						Log.w("BranchSDK_Tester", "control params " + linkProperties.getControlParams());
+						response.put("linkProperties", linkProperties.toString());
+					}
+				}
+				fireEvent("bio:initSession", response);
+			}
+		}).reInit();
 	}
 	@Kroll.method
 	public void disableTracking(boolean value) {
@@ -107,11 +149,11 @@ public class BranchIOModule extends KrollModule
 
 		JSONObject sessionParams = Branch.getInstance().getLatestReferringParams();
 		if (sessionParams == null) {
-			Log.w(LCAT, "return is null");
+			//Log.w(LCAT, "return is null");
 			return null;
 		} else {
-			Log.w(LCAT, "return is not null");
-			Log.w(LCAT, sessionParams.toString());
+			//Log.w(LCAT, "return is not null");
+			//Log.w(LCAT, sessionParams.toString());
 		}
 
 		return createSessionDict(sessionParams);
@@ -125,11 +167,11 @@ public class BranchIOModule extends KrollModule
 
 		JSONObject installParams = Branch.getInstance().getFirstReferringParams();
 		if (installParams == null) {
-			Log.w(LCAT, "return is null");
+			//Log.w(LCAT, "return is null");
 			return null;
 		} else {
-			Log.w(LCAT, "return is not null");
-			Log.w(LCAT, installParams.toString());
+			//Log.w(LCAT, "return is not null");
+			//Log.w(LCAT, installParams.toString());
 		}
 
 		return createSessionDict(installParams);
@@ -177,16 +219,16 @@ public class BranchIOModule extends KrollModule
 	}
 
 	private KrollDict parseJSONObject(JSONObject jsonObject) {
-		Log.w(LCAT, "start parseJSONObject");
+		//Log.w(LCAT, "start parseJSONObject");
 		KrollDict dict = new KrollDict();
 		Iterator<?> keys = jsonObject.keys();
 
 		while(keys.hasNext()) {
 			String key = (String)keys.next();
-			Log.w(LCAT, "processing key: " + key);
-			Log.w(LCAT, "key instance: " + jsonObject.opt(key).getClass().getName());
+			//Log.w(LCAT, "processing key: " + key);
+			//Log.w(LCAT, "key instance: " + jsonObject.opt(key).getClass().getName());
 			if (jsonObject.opt(key) instanceof JSONObject) {
-				Log.w(LCAT, "recursing...");
+				//Log.w(LCAT, "recursing...");
 				JSONObject jsonObj;
 				try {
 					jsonObj = jsonObject.getJSONObject(key);
@@ -195,22 +237,22 @@ public class BranchIOModule extends KrollModule
 					dict.put(key, tempDict);
 				}
 				catch (JSONException exception) {
-					Log.w(LCAT, "invalid json passed");
+					Log.e(LCAT, "invalid json passed");
 				}
 			} else if (jsonObject.opt(key) instanceof JSONArray) {
-				Log.w(LCAT, "processing jsonarray...");
+				//Log.w(LCAT, "processing jsonarray...");
 				try {
 					String[] stringArray = parseJSONArray(jsonObject.getJSONArray(key));
 					dict.put(key, stringArray);
 				}
 				catch (JSONException exception) {
-					Log.w(LCAT, "invalid jsonarray passed");
+					Log.e(LCAT, "invalid jsonarray passed");
 				}
 			} else if (jsonObject.opt(key) == JSONObject.NULL) {
-				Log.w(LCAT, "null object");
+				//Log.w(LCAT, "null object");
 				dict.put(key, null);
 			} else {
-				Log.w(LCAT, "not recursing...");
+				//Log.w(LCAT, "not recursing...");
 				dict.put(key, jsonObject.opt(key));
 			}
 		}
@@ -219,19 +261,19 @@ public class BranchIOModule extends KrollModule
 	}
 
 	private String[] parseJSONArray(JSONArray jsonArray) {
-		Log.w(LCAT, "start parseJSONArray");
+		//Log.w(LCAT, "start parseJSONArray");
 		ArrayList<Object> list = new ArrayList<Object>();
 		if (jsonArray != null) {
 			for (int i = 0; i < jsonArray.length(); i++) {
 				try {
 					Object value = jsonArray.get(i);
 					if (value == JSONObject.NULL) {
-						Log.w(LCAT, "null object");
+						//Log.w(LCAT, "null object");
 						value = null;
 					}
 					list.add(value);
 				} catch (JSONException exception) {
-					Log.w(LCAT, "invalid object");
+					Log.e(LCAT, "invalid object");
 				}
 			}
 		}
@@ -247,7 +289,7 @@ public class BranchIOModule extends KrollModule
 		public void onLogoutFinished(boolean changed, BranchError error) {
 			Log.w(LCAT, "inside onLogoutFinished");
 
-			BranchIOModule self = BranchIOModule.this;
+			//BranchIOModule self = BranchIOModule.this;
 			KrollDict response = new KrollDict();
 
 			if (error == null) {
@@ -258,7 +300,7 @@ public class BranchIOModule extends KrollModule
 				response.put("message", errorMessage);
 			}
 
-			self.fireEvent("bio:logout", response);
+			fireEvent("bio:logout", response);
 		}
 	}
 }
